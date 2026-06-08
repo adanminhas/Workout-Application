@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/workout_repository.dart';
 import '../theme/theme_controller.dart';
 import 'exercises_screen.dart';
 import 'settings_screen.dart';
@@ -9,9 +10,14 @@ import 'workouts_screen.dart';
 /// Bottom-navigation shell hosting the Phase 1 tabs plus Settings.
 /// A History tab arrives with Phase 6.
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key, required this.themeController});
+  const HomeShell({
+    super.key,
+    required this.themeController,
+    required this.appData,
+  });
 
   final ThemeController themeController;
+  final AppData appData;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -23,9 +29,9 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final tabs = [
-      const TodayScreen(),
-      const WorkoutsScreen(),
-      const ExercisesScreen(),
+      TodayScreen(appData: widget.appData),
+      WorkoutsScreen(appData: widget.appData),
+      ExercisesScreen(appData: widget.appData),
       SettingsScreen(themeController: widget.themeController),
     ];
 

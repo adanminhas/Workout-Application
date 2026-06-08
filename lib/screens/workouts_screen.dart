@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../data/sample_data.dart';
+import '../data/workout_repository.dart';
 import 'workout_detail_screen.dart';
 
 /// Lists every workout. Tapping one opens its detail/preview with a Start
 /// button. Editing/creating workouts arrives in Phase 4.
 class WorkoutsScreen extends StatelessWidget {
-  const WorkoutsScreen({super.key});
+  const WorkoutsScreen({super.key, required this.appData});
+
+  final AppData appData;
 
   @override
   Widget build(BuildContext context) {
@@ -15,10 +17,10 @@ class WorkoutsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Workouts')),
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
-        itemCount: SampleData.workouts.length,
+        itemCount: appData.workouts.length,
         separatorBuilder: (_, _) => const SizedBox(height: 12),
         itemBuilder: (context, i) {
-          final workout = SampleData.workouts[i];
+          final workout = appData.workouts[i];
           return Card(
             child: ListTile(
               contentPadding:

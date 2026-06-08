@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 
-import '../data/sample_data.dart';
+import '../data/workout_repository.dart';
 import '../models/exercise.dart';
 
 /// The exercise + stretch library. Phase 1 is read-only; creating/editing and
 /// attaching media arrive in Phases 3 and 5.
 class ExercisesScreen extends StatelessWidget {
-  const ExercisesScreen({super.key});
+  const ExercisesScreen({super.key, required this.appData});
+
+  final AppData appData;
 
   @override
   Widget build(BuildContext context) {
-    final exercises = SampleData.exercises;
+    final exercises = appData.exercises;
     return Scaffold(
       appBar: AppBar(title: const Text('Exercises')),
       body: ListView.builder(

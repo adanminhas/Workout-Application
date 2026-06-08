@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/sample_data.dart';
+import '../data/workout_repository.dart';
 import '../models/workout.dart';
 import '../player/workout_player_screen.dart';
 import 'workout_detail_screen.dart';
@@ -9,10 +9,15 @@ import 'workout_detail_screen.dart';
 /// plan. Phase 1 picks the day by rotating on the day-of-year so it changes
 /// over time without any scheduling UI.
 class TodayScreen extends StatelessWidget {
-  const TodayScreen({super.key});
+  const TodayScreen({super.key, required this.appData});
+
+  final AppData appData;
 
   Workout get _todaysWorkout {
-    final rotation = [SampleData.dayA, SampleData.dayB, SampleData.dayC];
+    final rotation = [
+      for (final id in ['day_a', 'day_b', 'day_c']) ?appData.workoutById(id),
+    ];
+    if (rotation.isEmpty) return appData.workouts.first;
     final dayOfYear =
         DateTime.now().difference(DateTime(DateTime.now().year)).inDays;
     return rotation[dayOfYear % rotation.length];
