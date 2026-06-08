@@ -33,20 +33,50 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
   int _remaining = 0;
   bool _running = false;
 
+  // Short safety window before Done / Finish-early can be pressed, so a quick
+  // accidental tap doesn't skip a set. Counts 2 -> 0; 0 means the action is live.
+  static const _armSeconds = 2;
+  Timer? _armTimer;
+  int _armRemaining = 0;
+
   @override
   void initState() {
     super.initState();
     _steps = expandWorkout(widget.workout);
     _startedAt = DateTime.now();
+    // Rep steps are completable on display, so arm them right away. Timed steps
+    // arm when their countdown starts instead.
+    if (_steps.isNotEmpty && !_step.isTimed) _arm();
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
+    _armTimer?.cancel();
     super.dispose();
   }
 
   PlayerStep get _step => _steps[_index];
+
+  /// True once the safety window has elapsed and the completion action is live.
+  bool get _canComplete => _armRemaining == 0;
+
+  /// True when there is a previous step (or rest) we can step back to.
+  bool get _canGoBack => _phase == _Phase.rest || _running || _index > 0;
+
+  /// Start the short safety window that briefly disables the completion action.
+  void _arm() {
+    _armTimer?.cancel();
+    setState(() => _armRemaining = _armSeconds);
+    _armTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_armRemaining <= 1) {
+        _armTimer?.cancel();
+        setState(() => _armRemaining = 0);
+      } else {
+        setState(() => _armRemaining--);
+      }
+    });
+  }
 
   // --- Countdown helpers --------------------------------------------------
 
@@ -102,6 +132,48 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
       _running = false;
       _remaining = 0;
     });
+    // Arm rep steps on display; timed steps arm when their countdown starts.
+    if (!_step.isTimed) _arm();
+  }
+
+  /// Undo: step back to the previous exercise — used when Done / Finish-early
+  /// was tapped by accident, or to restart a running timer.
+  void _goBack() {
+    _ticker?.cancel();
+    _armTimer?.cancel();
+
+    if (_phase == _Phase.rest) {
+      // We just finished _step and are resting; return to re-do that set.
+      if (_step.isSetEnd) _completedSets = (_completedSets - 1).clamp(0, 1 << 30);
+      setState(() {
+        _phase = _Phase.exercise;
+        _running = false;
+        _remaining = 0;
+        _armRemaining = 0;
+      });
+    } else if (_running) {
+      // Mid-timer: cancel and re-show this step's Start button.
+      setState(() {
+        _running = false;
+        _remaining = 0;
+        _armRemaining = 0;
+      });
+      return;
+    } else if (_index > 0) {
+      // Return to the previous step to re-do it.
+      setState(() {
+        _index--;
+        _phase = _Phase.exercise;
+        _running = false;
+        _remaining = 0;
+        _armRemaining = 0;
+      });
+      if (_step.isSetEnd) _completedSets = (_completedSets - 1).clamp(0, 1 << 30);
+    } else {
+      return;
+    }
+
+    if (!_step.isTimed) _arm();
   }
 
   void _skipRest() {
@@ -160,6 +232,13 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
             icon: const Icon(Icons.close),
             onPressed: _confirmQuit,
           ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.undo),
+              tooltip: 'Go back a step',
+              onPressed: _canGoBack ? _goBack : null,
+            ),
+          ],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(4),
             child: LinearProgressIndicator(value: progress),
@@ -235,15 +314,19 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
   Widget _buildExerciseAction(PlayerStep step) {
     if (step.isTimed) {
       if (_running) {
+        // Let the user finish early, but only after the safety window.
         return OutlinedButton.icon(
-          onPressed: _completeStep, // let the user finish early
+          onPressed: _canComplete ? _completeStep : null,
           icon: const Icon(Icons.check),
           style: _bigButtonStyle,
-          label: const Text('Finish early'),
+          label: Text(_canComplete ? 'Finish early' : 'Finish early ($_armRemaining)'),
         );
       }
       return FilledButton.icon(
-        onPressed: () => _startCountdown(step.timerSeconds, _completeStep),
+        onPressed: () {
+          _startCountdown(step.timerSeconds, _completeStep);
+          _arm(); // gate "Finish early" for a moment after the timer starts
+        },
         icon: const Icon(Icons.play_arrow),
         style: _bigButtonStyle,
         label: Text('Start ${step.sideLabel ?? 'timer'}'),
@@ -251,10 +334,10 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
     }
 
     return FilledButton.icon(
-      onPressed: _completeStep,
+      onPressed: _canComplete ? _completeStep : null,
       icon: const Icon(Icons.check),
       style: _bigButtonStyle,
-      label: const Text('Done'),
+      label: Text(_canComplete ? 'Done' : 'Done ($_armRemaining)'),
     );
   }
 
