@@ -131,6 +131,60 @@ class WorkoutRepository {
     );
   }
 
+  // --- reactive watching --------------------------------------------------
+
+  /// Reactively watches all exercises ordered by sortOrder.
+  Stream<List<Exercise>> watchExercises() {
+    return (_db.select(_db.exercises)
+          ..orderBy([(t) => OrderingTerm(expression: t.sortOrder)]))
+        .watch()
+        .map((rows) => rows.map(_toExercise).toList());
+  }
+
+  // --- create / update / delete -------------------------------------------
+
+  Future<void> createExercise(Exercise exercise) async {
+    final order = await _nextSortOrder();
+    await _db.into(_db.exercises).insert(_exerciseCompanion(exercise, order));
+  }
+
+  Future<void> updateExercise(Exercise exercise) async {
+    final existing = await (_db.select(_db.exercises)
+          ..where((t) => t.id.equals(exercise.id)))
+        .getSingleOrNull();
+    final order = existing?.sortOrder ?? await _nextSortOrder();
+    await _db
+        .into(_db.exercises)
+        .insertOnConflictUpdate(_exerciseCompanion(exercise, order));
+  }
+
+  /// How many workout items reference this exercise.
+  Future<int> countExerciseUsages(String exerciseId) async {
+    final rows = await (_db.select(_db.workoutItems)
+          ..where((t) => t.exerciseId.equals(exerciseId)))
+        .get();
+    return rows.length;
+  }
+
+  /// Deletes workout items that reference the exercise first (FK enforcement),
+  /// then deletes the exercise itself.
+  Future<void> deleteExercise(String id) async {
+    await (_db.delete(_db.workoutItems)
+          ..where((t) => t.exerciseId.equals(id)))
+        .go();
+    await (_db.delete(_db.exercises)..where((t) => t.id.equals(id))).go();
+  }
+
+  Future<int> _nextSortOrder() async {
+    final rows = await (_db.select(_db.exercises)
+          ..orderBy([(t) => OrderingTerm(
+                expression: t.sortOrder,
+                mode: OrderingMode.desc)])
+          ..limit(1))
+        .get();
+    return rows.isEmpty ? 0 : rows.first.sortOrder + 1;
+  }
+
   static Exercise _toExercise(ExerciseRow row) {
     return Exercise(
       id: row.id,

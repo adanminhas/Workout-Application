@@ -21,9 +21,21 @@ void main() {
     final appData = await repository.loadAll();
 
     await tester.pumpWidget(
-      SetFlowApp(themeController: themeController, appData: appData),
+      SetFlowApp(
+        themeController: themeController,
+        appData: appData,
+        repository: repository,
+      ),
     );
-    await tester.pumpAndSettle();
+    // Don't use pumpAndSettle: the offstage Exercises tab shows a
+    // CircularProgressIndicator until its Drift stream emits, and an
+    // indeterminate animation never "settles". Let the Drift query (and its
+    // internal timer) run via runAsync, then pump the result in.
+    await tester.pump();
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+    await tester.pump();
 
     // Today tab is the default landing screen.
     expect(find.text("Today's workout"), findsOneWidget);
@@ -33,5 +45,10 @@ void main() {
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('Workouts'), findsWidgets);
     expect(find.text('Settings'), findsWidgets);
+
+    // Dispose the widget tree so the Drift stream subscription (and its
+    // pending timer) is cancelled before the in-memory DB closes in tearDown.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 50));
   });
 }

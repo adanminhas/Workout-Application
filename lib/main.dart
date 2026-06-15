@@ -15,7 +15,11 @@ Future<void> main() async {
   await repository.seedIfEmpty();
   final appData = await repository.loadAll();
 
-  runApp(SetFlowApp(themeController: themeController, appData: appData));
+  runApp(SetFlowApp(
+    themeController: themeController,
+    appData: appData,
+    repository: repository,
+  ));
 }
 
 class SetFlowApp extends StatelessWidget {
@@ -23,10 +27,12 @@ class SetFlowApp extends StatelessWidget {
     super.key,
     required this.themeController,
     required this.appData,
+    required this.repository,
   });
 
   final ThemeController themeController;
   final AppData appData;
+  final WorkoutRepository repository;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +45,11 @@ class SetFlowApp extends StatelessWidget {
           theme: themeController.themeFor(Brightness.light),
           darkTheme: themeController.themeFor(Brightness.dark),
           themeMode: themeController.themeMode,
-          home: HomeShell(themeController: themeController, appData: appData),
+          home: HomeShell(
+            themeController: themeController,
+            appData: appData,
+            repository: repository,
+          ),
         );
       },
     );
