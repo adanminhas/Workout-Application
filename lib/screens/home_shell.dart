@@ -13,12 +13,10 @@ class HomeShell extends StatefulWidget {
   const HomeShell({
     super.key,
     required this.themeController,
-    required this.appData,
     required this.repository,
   });
 
   final ThemeController themeController;
-  final AppData appData;
   final WorkoutRepository repository;
 
   @override
@@ -31,8 +29,8 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final tabs = [
-      TodayScreen(appData: widget.appData),
-      WorkoutsScreen(appData: widget.appData),
+      TodayScreen(repository: widget.repository),
+      WorkoutsScreen(repository: widget.repository),
       ExercisesScreen(repository: widget.repository),
       SettingsScreen(themeController: widget.themeController),
     ];

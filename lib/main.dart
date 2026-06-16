@@ -9,15 +9,13 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final themeController = await ThemeController.load();
 
-  // Open the on-device SQLite database, seed it from SampleData on first
-  // launch, then load a snapshot the screens read from (Phase 2).
+  // Open the on-device SQLite database and seed it from SampleData on first
+  // launch. Screens read reactively via the repository's watch* streams.
   final repository = WorkoutRepository(AppDatabase());
   await repository.seedIfEmpty();
-  final appData = await repository.loadAll();
 
   runApp(SetFlowApp(
     themeController: themeController,
-    appData: appData,
     repository: repository,
   ));
 }
@@ -26,12 +24,10 @@ class SetFlowApp extends StatelessWidget {
   const SetFlowApp({
     super.key,
     required this.themeController,
-    required this.appData,
     required this.repository,
   });
 
   final ThemeController themeController;
-  final AppData appData;
   final WorkoutRepository repository;
 
   @override
@@ -47,7 +43,6 @@ class SetFlowApp extends StatelessWidget {
           themeMode: themeController.themeMode,
           home: HomeShell(
             themeController: themeController,
-            appData: appData,
             repository: repository,
           ),
         );

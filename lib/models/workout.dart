@@ -5,6 +5,7 @@ import 'tracking_type.dart';
 /// override the exercise's defaults (sets, reps/seconds range, rest).
 class WorkoutItem {
   const WorkoutItem({
+    this.id,
     required this.exercise,
     required this.sets,
     this.minReps,
@@ -15,6 +16,10 @@ class WorkoutItem {
     this.isFinisher = false,
     this.notes,
   });
+
+  /// Row id when this item is persisted (null for seed/in-memory templates).
+  /// Lets the workout builder address a specific item to edit/remove/reorder.
+  final int? id;
 
   final Exercise exercise;
   final int sets;

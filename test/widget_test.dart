@@ -18,19 +18,17 @@ void main() {
     addTearDown(db.close);
     final repository = WorkoutRepository(db);
     await repository.seedIfEmpty();
-    final appData = await repository.loadAll();
 
     await tester.pumpWidget(
       SetFlowApp(
         themeController: themeController,
-        appData: appData,
         repository: repository,
       ),
     );
-    // Don't use pumpAndSettle: the offstage Exercises tab shows a
-    // CircularProgressIndicator until its Drift stream emits, and an
-    // indeterminate animation never "settles". Let the Drift query (and its
-    // internal timer) run via runAsync, then pump the result in.
+    // Don't use pumpAndSettle: every tab now shows a CircularProgressIndicator
+    // until its Drift stream emits, and an indeterminate animation never
+    // "settles". Let the Drift queries (and their internal timers) run via
+    // runAsync, then pump the result in.
     await tester.pump();
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 100)),
