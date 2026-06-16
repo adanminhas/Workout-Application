@@ -64,38 +64,49 @@ class SettingsScreen extends StatelessWidget {
                     themeController.setThemeMode(s.first),
               ),
 
-              const SizedBox(height: 24),
-              Text('Accent color', style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  for (final color in _palette)
-                    _Swatch(
-                      color: color,
-                      selected: color.toARGB32() ==
-                          themeController.seedColor.toARGB32(),
-                      onTap: () => themeController.setSeedColor(color),
-                    ),
-                ],
+              const SizedBox(height: 16),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('High contrast (black & white)'),
+                subtitle:
+                    const Text('Maximum legibility; ignores accent color'),
+                value: themeController.highContrast,
+                onChanged: themeController.setHighContrast,
               ),
 
-              const SizedBox(height: 24),
-              Text('Custom color', style: theme.textTheme.titleMedium),
-              const SizedBox(height: 8),
-              _HuePicker(
-                color: themeController.seedColor,
-                onChanged: themeController.setSeedColor,
-              ),
-
-              const SizedBox(height: 24),
-              OutlinedButton.icon(
-                onPressed: () => themeController
-                    .setSeedColor(ThemeController.defaultSeed),
-                icon: const Icon(Icons.restart_alt),
-                label: const Text('Reset accent to default'),
-              ),
+              // Accent options are meaningless in grayscale, so hide them.
+              if (!themeController.highContrast) ...[
+                const SizedBox(height: 24),
+                Text('Accent color', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (final color in _palette)
+                      _Swatch(
+                        color: color,
+                        selected: color.toARGB32() ==
+                            themeController.seedColor.toARGB32(),
+                        onTap: () => themeController.setSeedColor(color),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Text('Custom color', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 8),
+                _HuePicker(
+                  color: themeController.seedColor,
+                  onChanged: themeController.setSeedColor,
+                ),
+                const SizedBox(height: 24),
+                OutlinedButton.icon(
+                  onPressed: () => themeController
+                      .setSeedColor(ThemeController.defaultSeed),
+                  icon: const Icon(Icons.restart_alt),
+                  label: const Text('Reset accent to default'),
+                ),
+              ],
             ],
           ),
         );
