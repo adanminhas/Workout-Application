@@ -35,7 +35,8 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
             );
           }
           return ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            // Bottom inset so the last row's ⋮ menu clears the FAB.
+            padding: const EdgeInsets.only(top: 8, bottom: 96),
             itemCount: exercises.length,
             itemBuilder: (context, i) => _ExerciseTile(
               exercise: exercises[i],
