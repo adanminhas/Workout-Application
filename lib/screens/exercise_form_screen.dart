@@ -22,7 +22,6 @@ class _ExerciseFormScreenState extends State<ExerciseFormScreen> {
   late final TextEditingController _cuesCtrl;
   late final TextEditingController _instructionsCtrl;
   late TrackingType _trackingType;
-  late bool _isStretch;
 
   bool get _isEditing => widget.exercise != null;
 
@@ -35,7 +34,6 @@ class _ExerciseFormScreenState extends State<ExerciseFormScreen> {
     _cuesCtrl = TextEditingController(text: e?.formCues ?? '');
     _instructionsCtrl = TextEditingController(text: e?.instructions ?? '');
     _trackingType = e?.trackingType ?? TrackingType.reps;
-    _isStretch = e?.isStretch ?? false;
   }
 
   @override
@@ -56,7 +54,8 @@ class _ExerciseFormScreenState extends State<ExerciseFormScreen> {
       id: id,
       name: _nameCtrl.text.trim(),
       trackingType: _trackingType,
-      isStretch: _isStretch,
+      // A stretch is simply an exercise whose tracking type is "Stretch".
+      isStretch: _trackingType == TrackingType.stretch,
       muscleGroup:
           _muscleCtrl.text.trim().isEmpty ? null : _muscleCtrl.text.trim(),
       formCues: _cuesCtrl.text.trim().isEmpty ? null : _cuesCtrl.text.trim(),
@@ -101,10 +100,7 @@ class _ExerciseFormScreenState extends State<ExerciseFormScreen> {
                   .toList(),
               onChanged: (v) {
                 if (v == null) return;
-                setState(() {
-                  _trackingType = v;
-                  if (v == TrackingType.stretch) _isStretch = true;
-                });
+                setState(() => _trackingType = v);
               },
             ),
             const SizedBox(height: 20),
@@ -116,15 +112,7 @@ class _ExerciseFormScreenState extends State<ExerciseFormScreen> {
               ),
               textCapitalization: TextCapitalization.sentences,
             ),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              title: const Text('Stretch'),
-              subtitle: const Text('Appears in the stretches section'),
-              value: _isStretch,
-              onChanged: (v) => setState(() => _isStretch = v),
-              contentPadding: EdgeInsets.zero,
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 20),
             TextFormField(
               controller: _cuesCtrl,
               decoration: const InputDecoration(
