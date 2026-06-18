@@ -25,6 +25,13 @@ class Exercises extends Table {
   TextColumn get formCues => text().nullable()();
   TextColumn get muscleGroup => text().nullable()();
 
+  /// Absolute path to a demo image/video copied into app storage (Phase 5).
+  /// Stored as a FILE PATH, never a blob.
+  TextColumn get mediaPath => text().nullable()();
+
+  /// `MediaType.name` (`image` / `video`) describing [mediaPath], or null.
+  TextColumn get mediaType => text().nullable()();
+
   /// Display order in the library.
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
 
@@ -103,10 +110,18 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'setflow'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          // v2 (Phase 5): demo media columns on exercises.
+          if (from < 2) {
+            await m.addColumn(exercises, exercises.mediaPath);
+            await m.addColumn(exercises, exercises.mediaType);
+          }
+        },
         beforeOpen: (details) async {
           // Enforce the foreign keys declared above (off by default in SQLite).
           await customStatement('PRAGMA foreign_keys = ON');

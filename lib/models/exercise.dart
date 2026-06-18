@@ -1,9 +1,12 @@
 import 'tracking_type.dart';
 
+/// Kind of demo media attached to an exercise (Phase 5).
+enum MediaType { image, video }
+
 /// A movement in the library (an exercise or a stretch).
 ///
-/// Phase 1 keeps this in memory and hardcoded. Later phases will persist this
-/// to SQLite and let the user create/edit their own.
+/// Persisted to on-device SQLite; the user can create/edit their own and attach
+/// a demo image or video (stored as a file path, never a blob).
 class Exercise {
   const Exercise({
     required this.id,
@@ -13,6 +16,8 @@ class Exercise {
     this.instructions,
     this.formCues,
     this.muscleGroup,
+    this.mediaPath,
+    this.mediaType,
   });
 
   final String id;
@@ -25,4 +30,10 @@ class Exercise {
   final String? instructions;
   final String? formCues;
   final String? muscleGroup;
+
+  /// Absolute path to a demo image/video in app storage, or null.
+  final String? mediaPath;
+  final MediaType? mediaType;
+
+  bool get hasMedia => mediaPath != null && mediaType != null;
 }

@@ -217,6 +217,8 @@ class WorkoutRepository {
       instructions: Value(e.instructions),
       formCues: Value(e.formCues),
       muscleGroup: Value(e.muscleGroup),
+      mediaPath: Value(e.mediaPath),
+      mediaType: Value(e.mediaType?.name),
       sortOrder: Value(sortOrder),
     );
   }
@@ -301,6 +303,10 @@ class WorkoutRepository {
       instructions: row.instructions,
       formCues: row.formCues,
       muscleGroup: row.muscleGroup,
+      mediaPath: row.mediaPath,
+      mediaType: row.mediaType == null
+          ? null
+          : MediaType.values.byName(row.mediaType!),
     );
   }
 

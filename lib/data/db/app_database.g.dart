@@ -86,6 +86,28 @@ class $ExercisesTable extends Exercises
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _mediaPathMeta = const VerificationMeta(
+    'mediaPath',
+  );
+  @override
+  late final GeneratedColumn<String> mediaPath = GeneratedColumn<String>(
+    'media_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _mediaTypeMeta = const VerificationMeta(
+    'mediaType',
+  );
+  @override
+  late final GeneratedColumn<String> mediaType = GeneratedColumn<String>(
+    'media_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _sortOrderMeta = const VerificationMeta(
     'sortOrder',
   );
@@ -107,6 +129,8 @@ class $ExercisesTable extends Exercises
     instructions,
     formCues,
     muscleGroup,
+    mediaPath,
+    mediaType,
     sortOrder,
   ];
   @override
@@ -175,6 +199,18 @@ class $ExercisesTable extends Exercises
         ),
       );
     }
+    if (data.containsKey('media_path')) {
+      context.handle(
+        _mediaPathMeta,
+        mediaPath.isAcceptableOrUnknown(data['media_path']!, _mediaPathMeta),
+      );
+    }
+    if (data.containsKey('media_type')) {
+      context.handle(
+        _mediaTypeMeta,
+        mediaType.isAcceptableOrUnknown(data['media_type']!, _mediaTypeMeta),
+      );
+    }
     if (data.containsKey('sort_order')) {
       context.handle(
         _sortOrderMeta,
@@ -218,6 +254,14 @@ class $ExercisesTable extends Exercises
         DriftSqlType.string,
         data['${effectivePrefix}muscle_group'],
       ),
+      mediaPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}media_path'],
+      ),
+      mediaType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}media_type'],
+      ),
       sortOrder: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}sort_order'],
@@ -244,6 +288,13 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
   final String? formCues;
   final String? muscleGroup;
 
+  /// Absolute path to a demo image/video copied into app storage (Phase 5).
+  /// Stored as a FILE PATH, never a blob.
+  final String? mediaPath;
+
+  /// `MediaType.name` (`image` / `video`) describing [mediaPath], or null.
+  final String? mediaType;
+
   /// Display order in the library.
   final int sortOrder;
   const ExerciseRow({
@@ -254,6 +305,8 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     this.instructions,
     this.formCues,
     this.muscleGroup,
+    this.mediaPath,
+    this.mediaType,
     required this.sortOrder,
   });
   @override
@@ -271,6 +324,12 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     }
     if (!nullToAbsent || muscleGroup != null) {
       map['muscle_group'] = Variable<String>(muscleGroup);
+    }
+    if (!nullToAbsent || mediaPath != null) {
+      map['media_path'] = Variable<String>(mediaPath);
+    }
+    if (!nullToAbsent || mediaType != null) {
+      map['media_type'] = Variable<String>(mediaType);
     }
     map['sort_order'] = Variable<int>(sortOrder);
     return map;
@@ -291,6 +350,12 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       muscleGroup: muscleGroup == null && nullToAbsent
           ? const Value.absent()
           : Value(muscleGroup),
+      mediaPath: mediaPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mediaPath),
+      mediaType: mediaType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mediaType),
       sortOrder: Value(sortOrder),
     );
   }
@@ -308,6 +373,8 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       instructions: serializer.fromJson<String?>(json['instructions']),
       formCues: serializer.fromJson<String?>(json['formCues']),
       muscleGroup: serializer.fromJson<String?>(json['muscleGroup']),
+      mediaPath: serializer.fromJson<String?>(json['mediaPath']),
+      mediaType: serializer.fromJson<String?>(json['mediaType']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
     );
   }
@@ -322,6 +389,8 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       'instructions': serializer.toJson<String?>(instructions),
       'formCues': serializer.toJson<String?>(formCues),
       'muscleGroup': serializer.toJson<String?>(muscleGroup),
+      'mediaPath': serializer.toJson<String?>(mediaPath),
+      'mediaType': serializer.toJson<String?>(mediaType),
       'sortOrder': serializer.toJson<int>(sortOrder),
     };
   }
@@ -334,6 +403,8 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     Value<String?> instructions = const Value.absent(),
     Value<String?> formCues = const Value.absent(),
     Value<String?> muscleGroup = const Value.absent(),
+    Value<String?> mediaPath = const Value.absent(),
+    Value<String?> mediaType = const Value.absent(),
     int? sortOrder,
   }) => ExerciseRow(
     id: id ?? this.id,
@@ -343,6 +414,8 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     instructions: instructions.present ? instructions.value : this.instructions,
     formCues: formCues.present ? formCues.value : this.formCues,
     muscleGroup: muscleGroup.present ? muscleGroup.value : this.muscleGroup,
+    mediaPath: mediaPath.present ? mediaPath.value : this.mediaPath,
+    mediaType: mediaType.present ? mediaType.value : this.mediaType,
     sortOrder: sortOrder ?? this.sortOrder,
   );
   ExerciseRow copyWithCompanion(ExercisesCompanion data) {
@@ -360,6 +433,8 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       muscleGroup: data.muscleGroup.present
           ? data.muscleGroup.value
           : this.muscleGroup,
+      mediaPath: data.mediaPath.present ? data.mediaPath.value : this.mediaPath,
+      mediaType: data.mediaType.present ? data.mediaType.value : this.mediaType,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
     );
   }
@@ -374,6 +449,8 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
           ..write('instructions: $instructions, ')
           ..write('formCues: $formCues, ')
           ..write('muscleGroup: $muscleGroup, ')
+          ..write('mediaPath: $mediaPath, ')
+          ..write('mediaType: $mediaType, ')
           ..write('sortOrder: $sortOrder')
           ..write(')'))
         .toString();
@@ -388,6 +465,8 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     instructions,
     formCues,
     muscleGroup,
+    mediaPath,
+    mediaType,
     sortOrder,
   );
   @override
@@ -401,6 +480,8 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
           other.instructions == this.instructions &&
           other.formCues == this.formCues &&
           other.muscleGroup == this.muscleGroup &&
+          other.mediaPath == this.mediaPath &&
+          other.mediaType == this.mediaType &&
           other.sortOrder == this.sortOrder);
 }
 
@@ -412,6 +493,8 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
   final Value<String?> instructions;
   final Value<String?> formCues;
   final Value<String?> muscleGroup;
+  final Value<String?> mediaPath;
+  final Value<String?> mediaType;
   final Value<int> sortOrder;
   final Value<int> rowid;
   const ExercisesCompanion({
@@ -422,6 +505,8 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     this.instructions = const Value.absent(),
     this.formCues = const Value.absent(),
     this.muscleGroup = const Value.absent(),
+    this.mediaPath = const Value.absent(),
+    this.mediaType = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -433,6 +518,8 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     this.instructions = const Value.absent(),
     this.formCues = const Value.absent(),
     this.muscleGroup = const Value.absent(),
+    this.mediaPath = const Value.absent(),
+    this.mediaType = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -446,6 +533,8 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     Expression<String>? instructions,
     Expression<String>? formCues,
     Expression<String>? muscleGroup,
+    Expression<String>? mediaPath,
+    Expression<String>? mediaType,
     Expression<int>? sortOrder,
     Expression<int>? rowid,
   }) {
@@ -457,6 +546,8 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
       if (instructions != null) 'instructions': instructions,
       if (formCues != null) 'form_cues': formCues,
       if (muscleGroup != null) 'muscle_group': muscleGroup,
+      if (mediaPath != null) 'media_path': mediaPath,
+      if (mediaType != null) 'media_type': mediaType,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (rowid != null) 'rowid': rowid,
     });
@@ -470,6 +561,8 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     Value<String?>? instructions,
     Value<String?>? formCues,
     Value<String?>? muscleGroup,
+    Value<String?>? mediaPath,
+    Value<String?>? mediaType,
     Value<int>? sortOrder,
     Value<int>? rowid,
   }) {
@@ -481,6 +574,8 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
       instructions: instructions ?? this.instructions,
       formCues: formCues ?? this.formCues,
       muscleGroup: muscleGroup ?? this.muscleGroup,
+      mediaPath: mediaPath ?? this.mediaPath,
+      mediaType: mediaType ?? this.mediaType,
       sortOrder: sortOrder ?? this.sortOrder,
       rowid: rowid ?? this.rowid,
     );
@@ -510,6 +605,12 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     if (muscleGroup.present) {
       map['muscle_group'] = Variable<String>(muscleGroup.value);
     }
+    if (mediaPath.present) {
+      map['media_path'] = Variable<String>(mediaPath.value);
+    }
+    if (mediaType.present) {
+      map['media_type'] = Variable<String>(mediaType.value);
+    }
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
     }
@@ -529,6 +630,8 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
           ..write('instructions: $instructions, ')
           ..write('formCues: $formCues, ')
           ..write('muscleGroup: $muscleGroup, ')
+          ..write('mediaPath: $mediaPath, ')
+          ..write('mediaType: $mediaType, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -2544,6 +2647,8 @@ typedef $$ExercisesTableCreateCompanionBuilder =
       Value<String?> instructions,
       Value<String?> formCues,
       Value<String?> muscleGroup,
+      Value<String?> mediaPath,
+      Value<String?> mediaType,
       Value<int> sortOrder,
       Value<int> rowid,
     });
@@ -2556,6 +2661,8 @@ typedef $$ExercisesTableUpdateCompanionBuilder =
       Value<String?> instructions,
       Value<String?> formCues,
       Value<String?> muscleGroup,
+      Value<String?> mediaPath,
+      Value<String?> mediaType,
       Value<int> sortOrder,
       Value<int> rowid,
     });
@@ -2627,6 +2734,16 @@ class $$ExercisesTableFilterComposer
 
   ColumnFilters<String> get muscleGroup => $composableBuilder(
     column: $table.muscleGroup,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mediaPath => $composableBuilder(
+    column: $table.mediaPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mediaType => $composableBuilder(
+    column: $table.mediaType,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2705,6 +2822,16 @@ class $$ExercisesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get mediaPath => $composableBuilder(
+    column: $table.mediaPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mediaType => $composableBuilder(
+    column: $table.mediaType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
     builder: (column) => ColumnOrderings(column),
@@ -2746,6 +2873,12 @@ class $$ExercisesTableAnnotationComposer
     column: $table.muscleGroup,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get mediaPath =>
+      $composableBuilder(column: $table.mediaPath, builder: (column) => column);
+
+  GeneratedColumn<String> get mediaType =>
+      $composableBuilder(column: $table.mediaType, builder: (column) => column);
 
   GeneratedColumn<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
@@ -2811,6 +2944,8 @@ class $$ExercisesTableTableManager
                 Value<String?> instructions = const Value.absent(),
                 Value<String?> formCues = const Value.absent(),
                 Value<String?> muscleGroup = const Value.absent(),
+                Value<String?> mediaPath = const Value.absent(),
+                Value<String?> mediaType = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExercisesCompanion(
@@ -2821,6 +2956,8 @@ class $$ExercisesTableTableManager
                 instructions: instructions,
                 formCues: formCues,
                 muscleGroup: muscleGroup,
+                mediaPath: mediaPath,
+                mediaType: mediaType,
                 sortOrder: sortOrder,
                 rowid: rowid,
               ),
@@ -2833,6 +2970,8 @@ class $$ExercisesTableTableManager
                 Value<String?> instructions = const Value.absent(),
                 Value<String?> formCues = const Value.absent(),
                 Value<String?> muscleGroup = const Value.absent(),
+                Value<String?> mediaPath = const Value.absent(),
+                Value<String?> mediaType = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExercisesCompanion.insert(
@@ -2843,6 +2982,8 @@ class $$ExercisesTableTableManager
                 instructions: instructions,
                 formCues: formCues,
                 muscleGroup: muscleGroup,
+                mediaPath: mediaPath,
+                mediaType: mediaType,
                 sortOrder: sortOrder,
                 rowid: rowid,
               ),
