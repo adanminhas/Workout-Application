@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../models/exercise.dart';
 import '../models/tracking_type.dart';
 import '../models/workout.dart';
+import '../models/workout_session.dart';
 import 'db/app_database.dart';
 import 'sample_data.dart';
 
@@ -204,6 +205,101 @@ class WorkoutRepository {
           ..limit(1))
         .get();
     return rows.isEmpty ? 0 : rows.first.position + 1;
+  }
+
+  // --- history / sessions (Phase 6) ---------------------------------------
+
+  /// Records a finished workout run plus its completed sets, in one transaction.
+  Future<void> recordSession({
+    required Workout workout,
+    required DateTime startedAt,
+    required DateTime completedAt,
+    required List<CompletedSetRecord> sets,
+  }) async {
+    await _db.transaction(() async {
+      final sessionId =
+          await _db.into(_db.workoutSessions).insert(WorkoutSessionsCompanion.insert(
+                workoutId: Value(workout.id),
+                workoutName: workout.name,
+                startedAt: startedAt,
+                completedAt: Value(completedAt),
+              ));
+      if (sets.isEmpty) return;
+      await _db.batch((b) {
+        for (final s in sets) {
+          b.insert(
+            _db.completedSets,
+            CompletedSetsCompanion.insert(
+              sessionId: sessionId,
+              exerciseId: s.exerciseId,
+              exerciseName: s.exerciseName,
+              setIndex: s.setIndex,
+              side: Value(s.side),
+              repsDone: Value(s.repsDone),
+              secondsDone: Value(s.secondsDone),
+              completedAt: s.completedAt,
+            ),
+          );
+        }
+      });
+    });
+  }
+
+  /// Watches all recorded sessions (newest first) with their completed-set
+  /// counts, so the history list and calendar update live.
+  Stream<List<WorkoutSessionSummary>> watchSessions() {
+    final sessions = _db.workoutSessions;
+    final setCount = _db.completedSets.id.count();
+    final query = _db.select(sessions).join([
+      leftOuterJoin(_db.completedSets,
+          _db.completedSets.sessionId.equalsExp(sessions.id)),
+    ])
+      ..addColumns([setCount])
+      ..groupBy([sessions.id])
+      ..orderBy([
+        OrderingTerm(expression: sessions.startedAt, mode: OrderingMode.desc)
+      ]);
+    return query.watch().map((rows) => rows.map((row) {
+          final s = row.readTable(sessions);
+          return WorkoutSessionSummary(
+            id: s.id,
+            workoutId: s.workoutId,
+            workoutName: s.workoutName,
+            startedAt: s.startedAt,
+            completedAt: s.completedAt,
+            setCount: row.read(setCount) ?? 0,
+          );
+        }).toList());
+  }
+
+  /// The completed sets of one session, in completion order.
+  Future<List<CompletedSetRecord>> getSessionSets(int sessionId) async {
+    final rows = await (_db.select(_db.completedSets)
+          ..where((t) => t.sessionId.equals(sessionId))
+          ..orderBy([(t) => OrderingTerm(expression: t.id)]))
+        .get();
+    return rows
+        .map((r) => CompletedSetRecord(
+              exerciseId: r.exerciseId,
+              exerciseName: r.exerciseName,
+              setIndex: r.setIndex,
+              side: r.side,
+              repsDone: r.repsDone,
+              secondsDone: r.secondsDone,
+              completedAt: r.completedAt,
+            ))
+        .toList();
+  }
+
+  /// Deletes a session; its completed sets go with it via the FK cascade.
+  Future<void> deleteSession(int id) async {
+    await (_db.delete(_db.workoutSessions)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// Wipes all history (every session + completed set). Used by "start over".
+  Future<void> clearAllSessions() async {
+    await _db.delete(_db.completedSets).go();
+    await _db.delete(_db.workoutSessions).go();
   }
 
   // --- row <-> domain mapping ---------------------------------------------
