@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../models/exercise.dart';
 import '../models/workout.dart';
 import '../screens/workout_complete_screen.dart';
+import '../widgets/exercise_media_view.dart';
 import 'player_step.dart';
 
 /// The guided workout experience: walks the user through every set with a Done
@@ -283,7 +285,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Media placeholder (real video/GIF arrives in Phase 5).
+          // Demo media (Phase 5), unless a timer is currently running.
           Expanded(
             child: Center(
               child: step.isTimed && (_running || _remaining > 0)
@@ -291,7 +293,13 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
                       remaining: _remaining,
                       total: step.timerSeconds,
                     )
-                  : _MediaPlaceholder(target: step.targetLabel),
+                  : (step.mediaPath != null && step.mediaType != null
+                      ? _MediaWithTarget(
+                          mediaPath: step.mediaPath!,
+                          mediaType: step.mediaType!,
+                          target: step.targetLabel,
+                        )
+                      : _MediaPlaceholder(target: step.targetLabel)),
             ),
           ),
 
@@ -457,7 +465,46 @@ class _TimerDial extends StatelessWidget {
   }
 }
 
-/// Stand-in for the exercise media that arrives in Phase 5.
+/// Real demo media (image or video) above the target line.
+class _MediaWithTarget extends StatelessWidget {
+  const _MediaWithTarget({
+    required this.mediaPath,
+    required this.mediaType,
+    required this.target,
+  });
+
+  final String mediaPath;
+  final MediaType mediaType;
+  final String target;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 340),
+          child: ExerciseMediaView(
+            key: ValueKey(mediaPath),
+            path: mediaPath,
+            type: mediaType,
+            height: 220,
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text('Target', style: theme.textTheme.labelLarge),
+        Text(
+          target,
+          style: theme.textTheme.headlineSmall
+              ?.copyWith(fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+}
+
+/// Placeholder shown when an exercise has no demo media attached.
 class _MediaPlaceholder extends StatelessWidget {
   const _MediaPlaceholder({required this.target});
 

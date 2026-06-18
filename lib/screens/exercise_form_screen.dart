@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../data/media_store.dart';
 import '../models/exercise.dart';
 import '../models/tracking_type.dart';
+import '../widgets/exercise_media_view.dart';
 
 /// Create or edit an exercise. Pops with the resulting [Exercise] on save,
 /// or null if the user cancels.
@@ -22,6 +25,9 @@ class _ExerciseFormScreenState extends State<ExerciseFormScreen> {
   late final TextEditingController _cuesCtrl;
   late final TextEditingController _instructionsCtrl;
   late TrackingType _trackingType;
+  String? _mediaPath;
+  MediaType? _mediaType;
+  bool _pickingMedia = false;
 
   bool get _isEditing => widget.exercise != null;
 
@@ -34,6 +40,34 @@ class _ExerciseFormScreenState extends State<ExerciseFormScreen> {
     _cuesCtrl = TextEditingController(text: e?.formCues ?? '');
     _instructionsCtrl = TextEditingController(text: e?.instructions ?? '');
     _trackingType = e?.trackingType ?? TrackingType.reps;
+    _mediaPath = e?.mediaPath;
+    _mediaType = e?.mediaType;
+  }
+
+  Future<void> _pickMedia(MediaType type) async {
+    final picker = ImagePicker();
+    final XFile? file = type == MediaType.video
+        ? await picker.pickVideo(source: ImageSource.gallery)
+        : await picker.pickImage(source: ImageSource.gallery);
+    if (file == null || !mounted) return;
+    setState(() => _pickingMedia = true);
+    try {
+      final saved = await MediaStore.save(file.path, type: type);
+      if (!mounted) return;
+      setState(() {
+        _mediaPath = saved;
+        _mediaType = type;
+      });
+    } finally {
+      if (mounted) setState(() => _pickingMedia = false);
+    }
+  }
+
+  void _removeMedia() {
+    setState(() {
+      _mediaPath = null;
+      _mediaType = null;
+    });
   }
 
   @override
@@ -62,12 +96,15 @@ class _ExerciseFormScreenState extends State<ExerciseFormScreen> {
       instructions: _instructionsCtrl.text.trim().isEmpty
           ? null
           : _instructionsCtrl.text.trim(),
+      mediaPath: _mediaPath,
+      mediaType: _mediaType,
     );
     Navigator.pop(context, exercise);
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Exercise' : 'New Exercise'),
@@ -102,6 +139,46 @@ class _ExerciseFormScreenState extends State<ExerciseFormScreen> {
                 if (v == null) return;
                 setState(() => _trackingType = v);
               },
+            ),
+            const SizedBox(height: 24),
+            Text('Demonstration (optional)',
+                style: theme.textTheme.titleSmall),
+            const SizedBox(height: 8),
+            if (_mediaPath != null && _mediaType != null) ...[
+              ExerciseMediaView(
+                key: ValueKey(_mediaPath),
+                path: _mediaPath!,
+                type: _mediaType!,
+                height: 180,
+              ),
+              const SizedBox(height: 8),
+            ],
+            Wrap(
+              spacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed:
+                      _pickingMedia ? null : () => _pickMedia(MediaType.image),
+                  icon: const Icon(Icons.image_outlined),
+                  label: Text(_mediaType == MediaType.image
+                      ? 'Replace image'
+                      : 'Add image'),
+                ),
+                OutlinedButton.icon(
+                  onPressed:
+                      _pickingMedia ? null : () => _pickMedia(MediaType.video),
+                  icon: const Icon(Icons.videocam_outlined),
+                  label: Text(_mediaType == MediaType.video
+                      ? 'Replace video'
+                      : 'Add video'),
+                ),
+                if (_mediaPath != null)
+                  TextButton.icon(
+                    onPressed: _pickingMedia ? null : _removeMedia,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Remove'),
+                  ),
+              ],
             ),
             const SizedBox(height: 20),
             TextFormField(

@@ -1,3 +1,4 @@
+import '../models/exercise.dart';
 import '../models/tracking_type.dart';
 import '../models/workout.dart';
 
@@ -21,6 +22,8 @@ class PlayerStep {
     this.targetMinSeconds,
     this.targetMaxSeconds,
     this.formCues,
+    this.mediaPath,
+    this.mediaType,
   });
 
   final String exerciseName;
@@ -41,6 +44,10 @@ class PlayerStep {
   final int? targetMinSeconds;
   final int? targetMaxSeconds;
   final String? formCues;
+
+  /// Demo media for this exercise (shown in the player), or null.
+  final String? mediaPath;
+  final MediaType? mediaType;
 
   bool get isTimed => trackingType.isTimed;
 
@@ -110,6 +117,8 @@ List<PlayerStep> expandWorkout(Workout workout) {
       targetMinSeconds: last.targetMinSeconds,
       targetMaxSeconds: last.targetMaxSeconds,
       formCues: last.formCues,
+      mediaPath: last.mediaPath,
+      mediaType: last.mediaType,
     ));
   }
 
@@ -137,5 +146,7 @@ PlayerStep _step(
     targetMinSeconds: item.minSeconds,
     targetMaxSeconds: item.maxSeconds,
     formCues: item.exercise.formCues,
+    mediaPath: item.exercise.mediaPath,
+    mediaType: item.exercise.mediaType,
   );
 }
