@@ -2,19 +2,26 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../data/workout_repository.dart';
 import '../models/exercise.dart';
 import '../models/workout.dart';
+import '../models/workout_session.dart';
 import '../screens/workout_complete_screen.dart';
 import '../widgets/exercise_media_view.dart';
 import 'player_step.dart';
 
 /// The guided workout experience: walks the user through every set with a Done
 /// button for rep work, a countdown for timed work, and automatic rest timers
-/// in between. Phase 1 keeps all state local to this widget.
+/// in between. On finish it records the session to history (Phase 6).
 class WorkoutPlayerScreen extends StatefulWidget {
-  const WorkoutPlayerScreen({super.key, required this.workout});
+  const WorkoutPlayerScreen({
+    super.key,
+    required this.workout,
+    required this.repository,
+  });
 
   final Workout workout;
+  final WorkoutRepository repository;
 
   @override
   State<WorkoutPlayerScreen> createState() => _WorkoutPlayerScreenState();
@@ -29,6 +36,10 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
   int _index = 0;
   int _completedSets = 0;
   _Phase _phase = _Phase.exercise;
+
+  // Completed sets recorded this session, kept in sync with _completedSets so
+  // undo pops the matching record. Written to history on finish.
+  final List<CompletedSetRecord> _done = [];
 
   // Countdown state, reused for both exercise timers and rest timers.
   Timer? _ticker;
@@ -111,7 +122,10 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
   /// Called when the current exercise step is finished (Done pressed or its
   /// timer elapsed). Counts the set, then either rests or advances.
   void _completeStep() {
-    if (_step.isSetEnd) _completedSets++;
+    if (_step.isSetEnd) {
+      _completedSets++;
+      _done.add(_recordFor(_step));
+    }
 
     final rest = _step.restAfterSeconds;
     if (rest > 0) {
@@ -146,7 +160,10 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
 
     if (_phase == _Phase.rest) {
       // We just finished _step and are resting; return to re-do that set.
-      if (_step.isSetEnd) _completedSets = (_completedSets - 1).clamp(0, 1 << 30);
+      if (_step.isSetEnd) {
+        _completedSets = (_completedSets - 1).clamp(0, 1 << 30);
+        if (_done.isNotEmpty) _done.removeLast();
+      }
       setState(() {
         _phase = _Phase.exercise;
         _running = false;
@@ -170,7 +187,10 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
         _remaining = 0;
         _armRemaining = 0;
       });
-      if (_step.isSetEnd) _completedSets = (_completedSets - 1).clamp(0, 1 << 30);
+      if (_step.isSetEnd) {
+        _completedSets = (_completedSets - 1).clamp(0, 1 << 30);
+        if (_done.isNotEmpty) _done.removeLast();
+      }
     } else {
       return;
     }
@@ -183,9 +203,29 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
     _advance();
   }
 
+  CompletedSetRecord _recordFor(PlayerStep step) {
+    return CompletedSetRecord(
+      exerciseId: step.exerciseId,
+      exerciseName: step.exerciseName,
+      setIndex: step.setNumber,
+      repsDone: step.isTimed ? null : (step.targetMaxReps ?? step.targetMinReps),
+      secondsDone: step.isTimed ? step.timerSeconds : null,
+      completedAt: DateTime.now(),
+    );
+  }
+
   void _finish() {
     _ticker?.cancel();
-    final duration = DateTime.now().difference(_startedAt);
+    final completedAt = DateTime.now();
+    final duration = completedAt.difference(_startedAt);
+    // Persist this run to history. Fire-and-forget: the DB write outlives this
+    // route, which we replace immediately below.
+    unawaited(widget.repository.recordSession(
+      workout: widget.workout,
+      startedAt: _startedAt,
+      completedAt: completedAt,
+      sets: List.of(_done),
+    ));
     Navigator.of(context).pushReplacement(MaterialPageRoute(
       builder: (_) => WorkoutCompleteScreen(
         workoutName: widget.workout.name,

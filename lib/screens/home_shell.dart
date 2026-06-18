@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import '../data/workout_repository.dart';
 import '../theme/theme_controller.dart';
 import 'exercises_screen.dart';
+import 'history_screen.dart';
 import 'settings_screen.dart';
 import 'today_screen.dart';
 import 'workouts_screen.dart';
 
-/// Bottom-navigation shell hosting the Phase 1 tabs plus Settings.
-/// A History tab arrives with Phase 6.
+/// Bottom-navigation shell hosting Today / Workouts / Exercises / History /
+/// Settings.
 class HomeShell extends StatefulWidget {
   const HomeShell({
     super.key,
@@ -32,6 +33,7 @@ class _HomeShellState extends State<HomeShell> {
       TodayScreen(repository: widget.repository),
       WorkoutsScreen(repository: widget.repository),
       ExercisesScreen(repository: widget.repository),
+      HistoryScreen(repository: widget.repository),
       SettingsScreen(themeController: widget.themeController),
     ];
 
@@ -55,6 +57,11 @@ class _HomeShellState extends State<HomeShell> {
             icon: Icon(Icons.fitness_center_outlined),
             selectedIcon: Icon(Icons.fitness_center),
             label: 'Exercises',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_month_outlined),
+            selectedIcon: Icon(Icons.calendar_month),
+            label: 'History',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),

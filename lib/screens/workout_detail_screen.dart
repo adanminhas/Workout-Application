@@ -27,7 +27,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   void _start(Workout workout) {
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => WorkoutPlayerScreen(workout: workout),
+      builder: (_) =>
+          WorkoutPlayerScreen(workout: workout, repository: widget.repository),
     ));
   }
 

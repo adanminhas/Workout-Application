@@ -102,7 +102,9 @@ class _TodayScreenState extends State<TodayScreen> {
                                 : () => Navigator.of(context).push(
                                       MaterialPageRoute(
                                         builder: (_) => WorkoutPlayerScreen(
-                                            workout: workout),
+                                          workout: workout,
+                                          repository: widget.repository,
+                                        ),
                                       ),
                                     ),
                             icon: const Icon(Icons.play_arrow),

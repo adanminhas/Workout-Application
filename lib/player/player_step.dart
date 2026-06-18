@@ -9,6 +9,7 @@ enum StepSide { none, left, right }
 /// set) of one exercise, plus the rest that follows it.
 class PlayerStep {
   const PlayerStep({
+    required this.exerciseId,
     required this.exerciseName,
     required this.trackingType,
     required this.setNumber,
@@ -26,6 +27,7 @@ class PlayerStep {
     this.mediaType,
   });
 
+  final String exerciseId;
   final String exerciseName;
   final TrackingType trackingType;
   final int setNumber;
@@ -104,6 +106,7 @@ List<PlayerStep> expandWorkout(Workout workout) {
   if (steps.isNotEmpty) {
     final last = steps.removeLast();
     steps.add(PlayerStep(
+      exerciseId: last.exerciseId,
       exerciseName: last.exerciseName,
       trackingType: last.trackingType,
       setNumber: last.setNumber,
@@ -133,6 +136,7 @@ PlayerStep _step(
   required bool isSetEnd,
 }) {
   return PlayerStep(
+    exerciseId: item.exercise.id,
     exerciseName: item.exercise.name,
     trackingType: item.trackingType,
     setNumber: setNumber,
