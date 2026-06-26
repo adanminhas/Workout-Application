@@ -1,7 +1,11 @@
 import 'dart:async';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../data/workout_prefs.dart';
 import '../data/workout_repository.dart';
 import '../models/exercise.dart';
 import '../models/workout.dart';
@@ -52,11 +56,15 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
   Timer? _armTimer;
   int _armRemaining = 0;
 
+  final AudioPlayer _sfx = AudioPlayer();
+
   @override
   void initState() {
     super.initState();
     _steps = expandWorkout(widget.workout);
     _startedAt = DateTime.now();
+    // Keep the screen on during the workout (Phase 7), if enabled.
+    if (WorkoutPrefs.keepAwake) WakelockPlus.enable();
     // Rep steps are completable on display, so arm them right away. Timed steps
     // arm when their countdown starts instead.
     if (_steps.isNotEmpty && !_step.isTimed) _arm();
@@ -66,7 +74,44 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
   void dispose() {
     _ticker?.cancel();
     _armTimer?.cancel();
+    WakelockPlus.disable();
+    _sfx.dispose();
     super.dispose();
+  }
+
+  // --- Sound + haptic cues (Phase 7), gated by user prefs -----------------
+
+  Future<void> _playSound(String asset) async {
+    if (!WorkoutPrefs.sound) return;
+    try {
+      await _sfx.stop();
+      await _sfx.play(AssetSource(asset));
+    } catch (_) {
+      // Audio is a non-essential nicety; never let it break the workout.
+    }
+  }
+
+  /// Countdown tick in the last few seconds of a timer/rest.
+  void _tickCue() {
+    _playSound('sounds/tick.wav');
+    if (WorkoutPrefs.haptics) HapticFeedback.selectionClick();
+  }
+
+  /// A timer (exercise or rest) reaching zero.
+  void _doneCue() {
+    _playSound('sounds/done.wav');
+    if (WorkoutPrefs.haptics) HapticFeedback.mediumImpact();
+  }
+
+  /// Light tap feedback for manual button presses.
+  void _pressCue() {
+    if (WorkoutPrefs.haptics) HapticFeedback.lightImpact();
+  }
+
+  /// The whole workout is finished.
+  void _finishCue() {
+    _playSound('sounds/done.wav');
+    if (WorkoutPrefs.haptics) HapticFeedback.heavyImpact();
   }
 
   PlayerStep get _step => _steps[_index];
@@ -106,9 +151,11 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
           _remaining = 0;
           _running = false;
         });
+        _doneCue();
         onDone();
       } else {
         setState(() => _remaining--);
+        if (_remaining <= 3) _tickCue();
       }
     });
   }
@@ -216,6 +263,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
 
   void _finish() {
     _ticker?.cancel();
+    _finishCue();
     final completedAt = DateTime.now();
     final duration = completedAt.difference(_startedAt);
     // Persist this run to history. Fire-and-forget: the DB write outlives this
@@ -364,7 +412,12 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
       if (_running) {
         // Let the user finish early, but only after the safety window.
         return OutlinedButton.icon(
-          onPressed: _canComplete ? _completeStep : null,
+          onPressed: _canComplete
+              ? () {
+                  _pressCue();
+                  _completeStep();
+                }
+              : null,
           icon: const Icon(Icons.check),
           style: _bigButtonStyle,
           label: Text(_canComplete ? 'Finish early' : 'Finish early ($_armRemaining)'),
@@ -372,6 +425,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
       }
       return FilledButton.icon(
         onPressed: () {
+          _pressCue();
           _startCountdown(step.timerSeconds, _completeStep);
           _arm(); // gate "Finish early" for a moment after the timer starts
         },
@@ -382,7 +436,12 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
     }
 
     return FilledButton.icon(
-      onPressed: _canComplete ? _completeStep : null,
+      onPressed: _canComplete
+          ? () {
+              _pressCue();
+              _completeStep();
+            }
+          : null,
       icon: const Icon(Icons.check),
       style: _bigButtonStyle,
       label: Text(_canComplete ? 'Done' : 'Done ($_armRemaining)'),

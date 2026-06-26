@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../data/workout_prefs.dart';
 import '../theme/theme_controller.dart';
 
-/// Settings tab. Phase 1 covers Appearance (theme mode + accent color);
-/// rest/sound/backup options arrive in later phases.
+/// Settings tab: Appearance (theme mode + accent color + high contrast) and
+/// Workout (sound, haptics, keep screen awake).
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key, required this.themeController});
 
@@ -107,10 +108,57 @@ class SettingsScreen extends StatelessWidget {
                   label: const Text('Reset accent to default'),
                 ),
               ],
+
+              const SizedBox(height: 32),
+              Text('Workout', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 8),
+              const _WorkoutPrefsSection(),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+/// Toggles for the in-workout experience, backed by [WorkoutPrefs].
+class _WorkoutPrefsSection extends StatefulWidget {
+  const _WorkoutPrefsSection();
+
+  @override
+  State<_WorkoutPrefsSection> createState() => _WorkoutPrefsSectionState();
+}
+
+class _WorkoutPrefsSectionState extends State<_WorkoutPrefsSection> {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          secondary: const Icon(Icons.volume_up_outlined),
+          title: const Text('Sound'),
+          subtitle: const Text('Countdown ticks and a finish chime'),
+          value: WorkoutPrefs.sound,
+          onChanged: (v) => setState(() => WorkoutPrefs.sound = v),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          secondary: const Icon(Icons.vibration),
+          title: const Text('Vibration'),
+          subtitle: const Text('Haptic feedback on sets and timers'),
+          value: WorkoutPrefs.haptics,
+          onChanged: (v) => setState(() => WorkoutPrefs.haptics = v),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          secondary: const Icon(Icons.screen_lock_portrait_outlined),
+          title: const Text('Keep screen awake'),
+          subtitle: const Text('Stay on while a workout is running'),
+          value: WorkoutPrefs.keepAwake,
+          onChanged: (v) => setState(() => WorkoutPrefs.keepAwake = v),
+        ),
+      ],
     );
   }
 }
