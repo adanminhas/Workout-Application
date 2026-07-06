@@ -92,6 +92,57 @@ void main() {
     expect(items[3].maxReps, 12);
   });
 
+  test('resolveExerciseRef survives annotated/plural/hyphenated refs', () {
+    const pushUp = Exercise(
+        id: 'ex_1', name: 'Push-Up', trackingType: TrackingType.reps);
+    const closeGrip = Exercise(
+        id: 'ex_2',
+        name: 'Close-Grip Push-Up (GHR)',
+        trackingType: TrackingType.reps);
+    const decline = Exercise(
+        id: 'ex_3', name: 'Decline Push-Up', trackingType: TrackingType.reps);
+    const pool = [pushUp, closeGrip, decline];
+
+    // The exact refs from a live qwen2.5:3b plan that used to be rejected.
+    expect(resolveExerciseRef('push-up (chest/shoulders/triceps)', pool),
+        pushUp);
+    expect(resolveExerciseRef('close-grip push-up (triceps only)', pool),
+        closeGrip);
+    expect(resolveExerciseRef('decline push-up (chest/shoulders/triceps)',
+        pool), decline);
+    // Plural + spacing variants.
+    expect(resolveExerciseRef('Push ups', pool), pushUp);
+    expect(resolveExerciseRef('ex_2', pool), closeGrip);
+    expect(resolveExerciseRef('bench press', pool), isNull);
+  });
+
+  test('applyProposal reuses a canonically-equal library exercise', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final repo = WorkoutRepository(db);
+    const pushUps = Exercise(
+        id: 'push_ups', name: 'Push-ups', trackingType: TrackingType.reps);
+    await repo.createExercise(pushUps);
+
+    // Model re-declares "Push-Up" as new — must be deduped, not duplicated.
+    final proposal = parseProposal({
+      'newExercises': [
+        {'name': 'Push-Up', 'trackingType': 'reps'},
+      ],
+      'workout': {
+        'name': 'Push Day',
+        'items': [
+          {'exercise': 'push-up (chest)', 'sets': 3, 'minReps': 8},
+        ],
+      },
+    });
+    final applied = await applyProposal(repo, [pushUps], proposal);
+    expect(applied.createdExercises, 0);
+    final workouts = await repo.watchWorkouts().first;
+    expect(workouts.single.items.single.exercise.id, 'push_ups');
+    expect(await repo.watchExercises().first, hasLength(1));
+  });
+
   test('applyProposal creates exercises + workout; unknown refs throw',
       () async {
     final db = AppDatabase(NativeDatabase.memory());

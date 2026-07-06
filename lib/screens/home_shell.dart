@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../data/workout_repository.dart';
 import '../theme/theme_controller.dart';
+import 'assistant_screen.dart';
 import 'exercises_screen.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
 import 'today_screen.dart';
 import 'workouts_screen.dart';
 
-/// Bottom-navigation shell hosting Today / Workouts / Exercises / History /
-/// Settings.
+/// Bottom-navigation shell hosting Today / Workouts / Exercises / Assistant /
+/// History / Settings. The assistant gets its own tab because it creates
+/// workouts AND exercises — it isn't a child of either.
 class HomeShell extends StatefulWidget {
   const HomeShell({
     super.key,
@@ -33,6 +35,7 @@ class _HomeShellState extends State<HomeShell> {
       TodayScreen(repository: widget.repository),
       WorkoutsScreen(repository: widget.repository),
       ExercisesScreen(repository: widget.repository),
+      AssistantScreen(repository: widget.repository),
       HistoryScreen(repository: widget.repository),
       SettingsScreen(themeController: widget.themeController),
     ];
@@ -57,6 +60,11 @@ class _HomeShellState extends State<HomeShell> {
             icon: Icon(Icons.fitness_center_outlined),
             selectedIcon: Icon(Icons.fitness_center),
             label: 'Exercises',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.smart_toy_outlined),
+            selectedIcon: Icon(Icons.smart_toy),
+            label: 'Assistant',
           ),
           NavigationDestination(
             icon: Icon(Icons.calendar_month_outlined),

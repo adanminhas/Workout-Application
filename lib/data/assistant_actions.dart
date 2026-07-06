@@ -88,7 +88,12 @@ ONLY when the user asks you to create a workout and/or new exercises, end your r
   }
 }
 ```
-Rules for the json: use EXACTLY the field names shown above (sets, minReps, maxReps, minSeconds, maxSeconds, restSeconds, isFinisher) — never invent field names; reference library exercises by their id when possible; any exercise not in the library MUST appear in newExercises; workouts should be mostly working sets — stretches only as a short cooldown at the end; keep 3-8 working items for a normal session. For ordinary questions or advice, reply normally WITHOUT a json block.''';
+Rules for the json:
+- use EXACTLY the field names shown above (sets, minReps, maxReps, minSeconds, maxSeconds, restSeconds, isFinisher) — never invent field names.
+- BEFORE adding anything to newExercises, check the library list for the same movement under a slightly different name (plural/singular, hyphenation — "Push-ups" vs "Push-Up") and reuse its id instead.
+- each item's "exercise" value must be EXACTLY a library id or a newExercises name — nothing else. Never append annotations like "(chest/shoulders)" to it; put such detail in "notes".
+- workouts should be mostly working sets — stretches only as a short cooldown at the end; keep 3-8 working items for a normal session.
+For ordinary questions or advice, reply normally WITHOUT a json block.''';
 }
 
 /// Extracts the proposal JSON from a model reply, or null if the reply has no
@@ -219,6 +224,55 @@ class AppliedProposal {
   final int createdExercises;
 }
 
+/// Canonical form for matching exercise names/refs: lowercase, parentheticals
+/// removed ("push-up (chest only)" → push-up), non-alphanumerics dropped, and
+/// a trailing plural "s" stripped ("Push-ups" == "Push-Up").
+String canonicalExerciseName(String raw) {
+  var s = raw.toLowerCase().replaceAll(RegExp(r'\([^)]*\)'), ' ');
+  s = s.replaceAll(RegExp(r'[^a-z0-9]'), '');
+  if (s.length > 3 && s.endsWith('s')) s = s.substring(0, s.length - 1);
+  return s;
+}
+
+/// Resolves a model-written exercise reference against [pool] (library +
+/// newly created). Tries exact id, then canonical-name matching: exact beats
+/// prefix beats substring; ties go to the closest name length. Models write
+/// refs like "push-up (chest/shoulders/triceps)" for an exercise declared as
+/// "Push-Up" — strict equality would reject perfectly usable plans.
+Exercise? resolveExerciseRef(String ref, List<Exercise> pool) {
+  for (final e in pool) {
+    if (e.id == ref.trim()) return e;
+  }
+  final canon = canonicalExerciseName(ref);
+  if (canon.isEmpty) return null;
+
+  Exercise? best;
+  var bestScore = 0;
+  var bestDiff = 1 << 30;
+  for (final e in pool) {
+    final name = canonicalExerciseName(e.name);
+    if (name.isEmpty) continue;
+    final int score;
+    if (name == canon) {
+      score = 3;
+    } else if (name.startsWith(canon) || canon.startsWith(name)) {
+      score = 2;
+    } else if (name.contains(canon) || canon.contains(name)) {
+      score = 1;
+    } else {
+      score = 0;
+    }
+    if (score == 0) continue;
+    final diff = (name.length - canon.length).abs();
+    if (score > bestScore || (score == bestScore && diff < bestDiff)) {
+      best = e;
+      bestScore = score;
+      bestDiff = diff;
+    }
+  }
+  return best;
+}
+
 /// Applies a proposal through the normal repository methods: creates the new
 /// exercises (reusing same-name library entries instead of duplicating), then
 /// the workout with its items. Throws [FormatException] when an item
@@ -228,25 +282,29 @@ Future<AppliedProposal> applyProposal(
   List<Exercise> library,
   AssistantProposal proposal,
 ) async {
-  final byId = {for (final e in library) e.id: e};
-  final byName = {for (final e in library) e.name.trim().toLowerCase(): e};
+  final pool = [...library];
 
+  // Create genuinely new exercises; a canonical name match in the library
+  // means "already have it" (Push-Up vs Push-ups), so reuse instead.
   var created = 0;
+  final pending = <Exercise>[];
   for (final e in proposal.newExercises) {
-    if (byName.containsKey(e.name.trim().toLowerCase())) continue; // reuse
-    await repository.createExercise(e);
-    byId[e.id] = e;
-    byName[e.name.trim().toLowerCase()] = e;
-    created++;
+    final canon = canonicalExerciseName(e.name);
+    final exists =
+        pool.any((x) => canonicalExerciseName(x.name) == canon);
+    if (!exists) pending.add(e);
   }
 
   String? workoutId;
   final workout = proposal.workout;
+
+  // Resolve every item BEFORE writing anything (all-or-nothing), against the
+  // library + the to-be-created exercises.
+  final resolvePool = [...pool, ...pending];
+  final resolved = <(ProposedItem, Exercise)>[];
   if (workout != null) {
-    final resolved = <(ProposedItem, Exercise)>[];
     for (final item in workout.items) {
-      final exercise =
-          byId[item.exerciseRef] ?? byName[item.exerciseRef.toLowerCase()];
+      final exercise = resolveExerciseRef(item.exerciseRef, resolvePool);
       if (exercise == null) {
         throw FormatException(
             'The plan references "${item.exerciseRef}", which is neither in '
@@ -254,6 +312,14 @@ Future<AppliedProposal> applyProposal(
       }
       resolved.add((item, exercise));
     }
+  }
+
+  for (final e in pending) {
+    await repository.createExercise(e);
+    created++;
+  }
+
+  if (workout != null) {
 
     workoutId = await repository.createWorkout(
         name: workout.name, focus: workout.focus);
