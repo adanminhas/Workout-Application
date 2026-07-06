@@ -5,7 +5,7 @@ import '../data/media_store.dart';
 import '../models/exercise.dart';
 import '../models/tracking_type.dart';
 import '../widgets/exercise_media_view.dart';
-import 'exercisedb_search_screen.dart';
+import 'wger_search_screen.dart';
 
 /// Create or edit an exercise. Pops with the resulting [Exercise] on save,
 /// or null if the user cancels.
@@ -71,24 +71,23 @@ class _ExerciseFormScreenState extends State<ExerciseFormScreen> {
     });
   }
 
-  /// Search ExerciseDB and download a demo GIF (opt-in online feature).
-  /// A GIF is stored as [MediaType.image] — Image.file animates GIFs.
+  /// Search the wger catalog (no key needed) and download a demo image
+  /// (opt-in online feature).
   Future<void> _findOnline() async {
-    final pick = await Navigator.push<ExerciseDbPick>(
+    final pick = await Navigator.push<WgerPick>(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            ExerciseDbSearchScreen(initialQuery: _nameCtrl.text.trim()),
+        builder: (_) => WgerSearchScreen(initialQuery: _nameCtrl.text.trim()),
       ),
     );
     if (pick == null || !mounted) return;
     setState(() {
       _mediaPath = pick.path;
       _mediaType = MediaType.image;
-      // Bonus: fill empty instructions from the catalog's step list.
+      // Bonus: fill empty instructions from the catalog's description.
       if (_instructionsCtrl.text.trim().isEmpty &&
           pick.instructions.isNotEmpty) {
-        _instructionsCtrl.text = pick.instructions.join('\n');
+        _instructionsCtrl.text = pick.instructions;
       }
     });
   }
