@@ -87,6 +87,24 @@ void main() {
     expect(empty.isEmpty, isTrue);
   });
 
+  test('cooldown never outnumbers the work (small pools stay balanced)', () {
+    // One matching work exercise + plenty of stretches: the old behavior
+    // produced 1 work + 4 stretches ("mostly stretches" bug).
+    final tiny = [
+      _ex('only_work', TrackingType.reps, 'Upper abs'),
+      for (var i = 0; i < 5; i++)
+        _ex('s_$i', TrackingType.stretch, 'Spine', stretch: true),
+    ];
+    final w = WorkoutGenerator.generate(
+      tiny,
+      const GeneratorOptions(targetMinutes: 20, seed: 5),
+    );
+    final work = w.items.where((i) => !i.exercise.isStretch).length;
+    final cool = w.items.where((i) => i.exercise.isStretch).length;
+    expect(work, greaterThan(0));
+    expect(cool, lessThanOrEqualTo(work));
+  });
+
   test('same seed reproduces the same draft', () {
     final a = WorkoutGenerator.generate(
         _library, const GeneratorOptions(targetMinutes: 20, seed: 99));

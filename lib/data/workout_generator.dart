@@ -160,7 +160,10 @@ class WorkoutGenerator {
     }
 
     if (hasCooldown && items.isNotEmpty) {
-      for (final s in stretches.take(4)) {
+      // Keep the cooldown proportionate: never more stretches than work items,
+      // so a small pool can't produce a "mostly stretches" workout.
+      final maxStretches = min(4, items.length);
+      for (final s in stretches.take(maxStretches)) {
         items.add(WorkoutItem(
           exercise: s,
           sets: 1,
