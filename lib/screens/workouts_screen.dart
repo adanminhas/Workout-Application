@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/workout_repository.dart';
 import '../models/workout.dart';
+import 'assistant_screen.dart';
 import 'generate_workout_screen.dart';
 import 'workout_builder_screen.dart';
 import 'workout_detail_screen.dart';
@@ -100,8 +101,15 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
         title: const Text('Workouts'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.smart_toy_outlined),
+            tooltip: 'AI assistant',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => AssistantScreen(repository: widget.repository),
+            )),
+          ),
+          IconButton(
             icon: const Icon(Icons.auto_awesome),
-            tooltip: 'Generate workout',
+            tooltip: 'Quick generate (offline)',
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(
               builder: (_) =>
                   GenerateWorkoutScreen(repository: widget.repository),
