@@ -5,6 +5,7 @@ import '../data/media_store.dart';
 import '../models/exercise.dart';
 import '../models/tracking_type.dart';
 import '../widgets/exercise_media_view.dart';
+import 'exercisedb_search_screen.dart';
 
 /// Create or edit an exercise. Pops with the resulting [Exercise] on save,
 /// or null if the user cancels.
@@ -67,6 +68,28 @@ class _ExerciseFormScreenState extends State<ExerciseFormScreen> {
     setState(() {
       _mediaPath = null;
       _mediaType = null;
+    });
+  }
+
+  /// Search ExerciseDB and download a demo GIF (opt-in online feature).
+  /// A GIF is stored as [MediaType.image] — Image.file animates GIFs.
+  Future<void> _findOnline() async {
+    final pick = await Navigator.push<ExerciseDbPick>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            ExerciseDbSearchScreen(initialQuery: _nameCtrl.text.trim()),
+      ),
+    );
+    if (pick == null || !mounted) return;
+    setState(() {
+      _mediaPath = pick.path;
+      _mediaType = MediaType.image;
+      // Bonus: fill empty instructions from the catalog's step list.
+      if (_instructionsCtrl.text.trim().isEmpty &&
+          pick.instructions.isNotEmpty) {
+        _instructionsCtrl.text = pick.instructions.join('\n');
+      }
     });
   }
 
@@ -171,6 +194,11 @@ class _ExerciseFormScreenState extends State<ExerciseFormScreen> {
                   label: Text(_mediaType == MediaType.video
                       ? 'Replace video'
                       : 'Add video'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _pickingMedia ? null : _findOnline,
+                  icon: const Icon(Icons.travel_explore),
+                  label: const Text('Find online'),
                 ),
                 if (_mediaPath != null)
                   TextButton.icon(

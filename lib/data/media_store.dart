@@ -12,19 +12,36 @@ class MediaStore {
 
   static const _subdir = 'exercise_media';
 
+  static Future<Directory> _mediaDir() async {
+    final dir = Directory('${(await getApplicationDocumentsDirectory()).path}'
+        '/$_subdir');
+    if (!await dir.exists()) await dir.create(recursive: true);
+    return dir;
+  }
+
   /// Copies [sourcePath] into app storage and returns the new absolute path.
   /// The filename is unique so replacing media never collides.
   static Future<String> save(
     String sourcePath, {
     required MediaType type,
   }) async {
-    final dir = Directory('${(await getApplicationDocumentsDirectory()).path}'
-        '/$_subdir');
-    if (!await dir.exists()) await dir.create(recursive: true);
-
+    final dir = await _mediaDir();
     final ext = _extension(sourcePath, type);
     final dest = '${dir.path}/${DateTime.now().millisecondsSinceEpoch}$ext';
     await File(sourcePath).copy(dest);
+    return dest;
+  }
+
+  /// Writes downloaded bytes (e.g. a fetched exercise GIF) into app storage
+  /// and returns the new absolute path.
+  static Future<String> saveBytes(
+    List<int> bytes, {
+    String extension = '.gif',
+  }) async {
+    final dir = await _mediaDir();
+    final dest =
+        '${dir.path}/${DateTime.now().millisecondsSinceEpoch}$extension';
+    await File(dest).writeAsBytes(bytes, flush: true);
     return dest;
   }
 

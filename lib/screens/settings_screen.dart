@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../data/exercisedb_api.dart';
 import '../data/workout_prefs.dart';
 import '../theme/theme_controller.dart';
 
-/// Settings tab: Appearance (theme mode + accent color + high contrast) and
-/// Workout (sound, haptics, keep screen awake).
+/// Settings tab: Appearance (theme mode + accent color + high contrast),
+/// Workout (sound, haptics, keep screen awake), and Online media (the
+/// user-supplied ExerciseDB key for "Find online").
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key, required this.themeController});
 
@@ -113,6 +115,11 @@ class SettingsScreen extends StatelessWidget {
               Text('Workout', style: theme.textTheme.titleLarge),
               const SizedBox(height: 8),
               const _WorkoutPrefsSection(),
+
+              const SizedBox(height: 32),
+              Text('Online media', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 8),
+              const _ExerciseDbKeyTile(),
             ],
           ),
         );
@@ -159,6 +166,80 @@ class _WorkoutPrefsSectionState extends State<_WorkoutPrefsSection> {
           onChanged: (v) => setState(() => WorkoutPrefs.keepAwake = v),
         ),
       ],
+    );
+  }
+}
+
+/// Manage the user-supplied ExerciseDB (RapidAPI) key used by "Find online"
+/// in the exercise form. Stored only on this device.
+class _ExerciseDbKeyTile extends StatefulWidget {
+  const _ExerciseDbKeyTile();
+
+  @override
+  State<_ExerciseDbKeyTile> createState() => _ExerciseDbKeyTileState();
+}
+
+class _ExerciseDbKeyTileState extends State<_ExerciseDbKeyTile> {
+  Future<void> _edit() async {
+    final ctrl = TextEditingController(text: ExerciseDbApi.apiKey ?? '');
+    final action = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('ExerciseDB API key'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Free key from rapidapi.com (search "ExerciseDB", subscribe to '
+              'the free plan). Stored only on this device.',
+              style: Theme.of(ctx).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'X-RapidAPI-Key',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          if (ExerciseDbApi.hasKey)
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, 'clear'),
+              child: const Text('Clear key'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, 'save'),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (action == 'save') {
+      setState(() => ExerciseDbApi.apiKey = ctrl.text);
+    } else if (action == 'clear') {
+      setState(() => ExerciseDbApi.apiKey = null);
+    }
+    ctrl.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.key_outlined),
+      title: const Text('ExerciseDB API key'),
+      subtitle: Text(ExerciseDbApi.hasKey
+          ? 'Set · tap to change'
+          : 'Not set · needed for "Find online" exercise GIFs'),
+      onTap: _edit,
     );
   }
 }
