@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/workout_repository.dart';
 import '../models/workout.dart';
+import 'generate_workout_screen.dart';
 import 'workout_builder_screen.dart';
 import 'workout_detail_screen.dart';
 import 'workout_meta_dialog.dart';
@@ -95,7 +96,19 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Workouts')),
+      appBar: AppBar(
+        title: const Text('Workouts'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.auto_awesome),
+            tooltip: 'Generate workout',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) =>
+                  GenerateWorkoutScreen(repository: widget.repository),
+            )),
+          ),
+        ],
+      ),
       body: StreamBuilder<List<Workout>>(
         stream: _workouts,
         builder: (context, snapshot) {
