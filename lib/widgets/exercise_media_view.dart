@@ -120,7 +120,9 @@ class _VideoViewState extends State<_VideoView> {
   void _toggle() {
     final c = _controller;
     if (c == null || !_ready) return;
-    setState(() => c.value.isPlaying ? c.pause() : c.play());
+    setState(() {
+      c.value.isPlaying ? c.pause() : c.play();
+    });
   }
 
   @override

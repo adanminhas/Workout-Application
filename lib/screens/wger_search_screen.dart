@@ -117,8 +117,9 @@ class _WgerSearchScreenState extends State<WgerSearchScreen> {
                           ),
                           const SizedBox(height: 12),
                           OutlinedButton.icon(
-                            onPressed: () => setState(
-                                () => _catalog = WgerApi.catalog()),
+                            onPressed: () => setState(() {
+                              _catalog = WgerApi.catalog();
+                            }),
                             icon: const Icon(Icons.refresh),
                             label: const Text('Retry'),
                           ),
