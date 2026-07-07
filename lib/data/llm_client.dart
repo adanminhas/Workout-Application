@@ -33,9 +33,9 @@ class LlmSettings {
 
   static bool get configured => baseUrl.isNotEmpty && model.isNotEmpty;
 
-  /// Normalized ".../v1/chat/completions" endpoint derived from [baseUrl].
+  /// Server root with scheme and no trailing slash or /v1 suffix.
   /// Accepts "192.168.1.201:11434", "http://host:11434", or ".../v1".
-  static Uri chatEndpoint() {
+  static String serverRoot() {
     var base = baseUrl;
     if (!base.startsWith('http://') && !base.startsWith('https://')) {
       base = 'http://$base';
@@ -43,9 +43,15 @@ class LlmSettings {
     while (base.endsWith('/')) {
       base = base.substring(0, base.length - 1);
     }
-    if (!base.endsWith('/v1')) base = '$base/v1';
-    return Uri.parse('$base/chat/completions');
+    if (base.endsWith('/v1')) base = base.substring(0, base.length - 3);
+    while (base.endsWith('/')) {
+      base = base.substring(0, base.length - 1);
+    }
+    return base;
   }
+
+  /// Normalized ".../v1/chat/completions" endpoint derived from [baseUrl].
+  static Uri chatEndpoint() => Uri.parse('${serverRoot()}/v1/chat/completions');
 }
 
 class ChatMessage {
@@ -136,8 +142,121 @@ class LlmClient {
     } catch (_) {}
     if (status == 404 && (detail?.contains('model') ?? false)) {
       return 'Model "${LlmSettings.model}" not found on the server — '
-          'pull it first (e.g. `ollama pull ${LlmSettings.model}`).';
+          'download it via the Models sheet (⬇ in the assistant).';
     }
     return detail ?? 'The model server returned HTTP $status.';
+  }
+}
+
+/// One model installed on the Ollama server.
+class OllamaModel {
+  const OllamaModel({required this.name, required this.sizeBytes});
+
+  final String name;
+  final int sizeBytes;
+
+  String get sizeLabel =>
+      '${(sizeBytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+}
+
+/// Progress of an in-flight model download.
+class OllamaPullProgress {
+  const OllamaPullProgress(this.status, this.completed, this.total);
+
+  final String status;
+  final int completed;
+  final int total;
+
+  /// 0..1 when the layer size is known, else null (indeterminate).
+  double? get fraction =>
+      total > 0 ? (completed / total).clamp(0.0, 1.0) : null;
+}
+
+/// Ollama-specific admin endpoints (list/pull models). These are NOT part of
+/// the OpenAI-compatible surface — [listModels] returning null means the
+/// configured server isn't Ollama and the in-app model manager hides itself.
+class OllamaAdmin {
+  OllamaAdmin._();
+
+  /// Models installed on the server, or null when unreachable / not Ollama.
+  static Future<List<OllamaModel>?> listModels() async {
+    try {
+      final res = await http
+          .get(Uri.parse('${LlmSettings.serverRoot()}/api/tags'))
+          .timeout(const Duration(seconds: 8));
+      if (res.statusCode != 200) return null;
+      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      final models = json['models'];
+      if (models is! List) return null;
+      return [
+        for (final m in models)
+          if (m is Map<String, dynamic> && m['name'] is String)
+            OllamaModel(
+              name: m['name'] as String,
+              sizeBytes: (m['size'] as num?)?.toInt() ?? 0,
+            ),
+      ]..sort((a, b) => a.name.compareTo(b.name));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Downloads [model] onto the server, streaming progress (NDJSON lines).
+  static Stream<OllamaPullProgress> pull(String model) async* {
+    final request =
+        http.Request('POST', Uri.parse('${LlmSettings.serverRoot()}/api/pull'))
+          ..headers['Content-Type'] = 'application/json'
+          ..body = jsonEncode({'model': model});
+    final client = http.Client();
+    try {
+      final response = await client
+          .send(request)
+          .timeout(const Duration(seconds: 30));
+      if (response.statusCode != 200) {
+        final body = await response.stream.bytesToString();
+        throw LlmException(_pullError(body, model));
+      }
+      final lines = response.stream
+          .transform(utf8.decoder)
+          .transform(const LineSplitter());
+      await for (final line in lines) {
+        if (line.trim().isEmpty) continue;
+        try {
+          final json = jsonDecode(line) as Map<String, dynamic>;
+          final error = json['error'];
+          if (error is String) throw LlmException(error);
+          yield OllamaPullProgress(
+            (json['status'] as String?) ?? '…',
+            (json['completed'] as num?)?.toInt() ?? 0,
+            (json['total'] as num?)?.toInt() ?? 0,
+          );
+        } on LlmException {
+          rethrow;
+        } catch (_) {
+          // Skip malformed lines.
+        }
+      }
+    } on LlmException {
+      rethrow;
+    } catch (_) {
+      throw const LlmException(
+          'Download failed — could not reach the model server.');
+    } finally {
+      client.close();
+    }
+  }
+
+  static String _pullError(String body, String model) {
+    try {
+      final json = jsonDecode(body) as Map<String, dynamic>;
+      final e = json['error'];
+      if (e is String) {
+        return e.contains('file does not exist') || e.contains('not found')
+            ? 'Model "$model" not found in the Ollama library — check the '
+                'spelling on ollama.com/library.'
+            : e;
+      }
+    } catch (_) {}
+    return 'Download failed for "$model".';
   }
 }

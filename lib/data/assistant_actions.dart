@@ -92,8 +92,9 @@ Rules for the json:
 - use EXACTLY the field names shown above (sets, minReps, maxReps, minSeconds, maxSeconds, restSeconds, isFinisher) — never invent field names.
 - BEFORE adding anything to newExercises, check the library list for the same movement under a slightly different name (plural/singular, hyphenation — "Push-ups" vs "Push-Up") and reuse its id instead.
 - each item's "exercise" value must be EXACTLY a library id or a newExercises name — nothing else. Never append annotations like "(chest/shoulders)" to it; put such detail in "notes".
+- ONLY include exercises that genuinely fit the request. A push day means pushing muscles (chest/shoulders/triceps) — do NOT pad the plan with unrelated library items like ab or core work unless the user asked for them. Prefer inventing a fitting newExercise over including an off-target library one.
 - workouts should be mostly working sets — stretches only as a short cooldown at the end; keep 3-8 working items for a normal session.
-For ordinary questions or advice, reply normally WITHOUT a json block.''';
+Keep the text outside the json block short and natural: one or two plain sentences introducing the plan. For ordinary questions or advice, reply normally WITHOUT a json block.''';
 }
 
 /// Extracts the proposal JSON from a model reply, or null if the reply has no

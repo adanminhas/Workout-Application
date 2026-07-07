@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../data/assistant_actions.dart';
 import '../data/llm_client.dart';
 import '../data/workout_repository.dart';
+import '../models/exercise.dart';
 import 'llm_settings_dialog.dart';
+import 'model_manager_sheet.dart';
 import 'workout_detail_screen.dart';
 
 /// Chat with a local (or any OpenAI-compatible) model to design workouts and
@@ -24,6 +26,9 @@ class _Bubble {
   final String role; // user | assistant
   String text;
   AssistantProposal? proposal;
+
+  /// Library snapshot at reply time, for resolving refs to display names.
+  List<Exercise> library = const [];
   String? parseError;
   bool saved = false;
 }
@@ -82,12 +87,18 @@ class _AssistantScreenState extends State<AssistantScreen> {
       }
       try {
         reply.proposal = extractProposal(reply.text);
+        reply.library = library;
       } on FormatException catch (e) {
         reply.parseError = e.message;
       }
     } on LlmException catch (e) {
-      reply.text = reply.text.isEmpty ? '⚠ ${e.message}' : reply.text;
-      reply.parseError = reply.text.isEmpty ? null : e.message;
+      // Show the error once: as the bubble when nothing streamed yet,
+      // otherwise as a note under the partial reply.
+      if (reply.text.isEmpty) {
+        reply.text = '⚠ ${e.message}';
+      } else {
+        reply.parseError = e.message;
+      }
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -147,6 +158,14 @@ class _AssistantScreenState extends State<AssistantScreen> {
       appBar: AppBar(
         title: const Text('AI Assistant'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.download_outlined),
+            tooltip: 'Models (download / switch)',
+            onPressed: () async {
+              await showModelManagerSheet(context);
+              if (mounted) setState(() {});
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.tune),
             tooltip: 'AI endpoint',
@@ -237,6 +256,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
                           if (b.proposal != null && !b.proposal!.isEmpty)
                             _ProposalCard(
                               proposal: b.proposal!,
+                              nameFor: (ref) =>
+                                  resolveExerciseRef(ref, [
+                                    ...b.library,
+                                    ...b.proposal!.newExercises,
+                                  ])?.name ??
+                                  ref,
                               saved: b.saved,
                               onSave: () => _saveProposal(b),
                             ),
@@ -289,11 +314,16 @@ class _AssistantScreenState extends State<AssistantScreen> {
 class _ProposalCard extends StatelessWidget {
   const _ProposalCard({
     required this.proposal,
+    required this.nameFor,
     required this.saved,
     required this.onSave,
   });
 
   final AssistantProposal proposal;
+
+  /// Resolves a model-written exercise ref to a friendly display name
+  /// (raw ids like ex_1730000000000_4 should never reach the user).
+  final String Function(String ref) nameFor;
   final bool saved;
   final VoidCallback onSave;
 
@@ -321,7 +351,7 @@ class _ProposalCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 2),
                   child: Text(
-                    '• ${item.exerciseRef} — ${item.sets}×'
+                    '• ${nameFor(item.exerciseRef)} — ${item.sets}×'
                     '${_target(item)} · rest ${item.restSeconds}s'
                     '${item.isFinisher ? ' · finisher' : ''}',
                     style: theme.textTheme.bodySmall,
