@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
 
 import 'data/db/app_database.dart';
 import 'data/llm_client.dart';
@@ -12,6 +14,8 @@ Future<void> main() async {
   final themeController = await ThemeController.load();
   await WorkoutPrefs.init();
   await LlmSettings.init();
+  // On-device model runtime; all catalog models are .litertlm files.
+  await FlutterGemma.initialize(inferenceEngines: [LiteRtLmEngine()]);
 
   // Open the on-device SQLite database and seed it from SampleData on first
   // launch. Screens read reactively via the repository's watch* streams.

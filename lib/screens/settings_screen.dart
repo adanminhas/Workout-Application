@@ -189,8 +189,8 @@ class _LlmSettingsTileState extends State<_LlmSettingsTile> {
       leading: const Icon(Icons.smart_toy_outlined),
       title: const Text('AI endpoint'),
       subtitle: Text(LlmSettings.configured
-          ? '${LlmSettings.model} @ ${LlmSettings.baseUrl}'
-          : 'Not set · e.g. Ollama on your PC'),
+          ? LlmSettings.summary
+          : 'Not set · on-device model or Ollama on your PC'),
       onTap: () async {
         await showLlmSettingsDialog(context);
         if (mounted) setState(() {});

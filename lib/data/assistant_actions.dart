@@ -54,19 +54,33 @@ class ProposedItem {
   final String? notes;
 }
 
-/// System prompt: tells the model what it is, what the user's library holds,
-/// and the exact JSON contract for creating things.
-String buildSystemPrompt(List<Exercise> library) {
+/// System prompt: tells the model what it is, what it can and cannot do,
+/// what the user's library and workouts hold, and the exact JSON contract.
+String buildSystemPrompt(List<Exercise> library, List<Workout> workouts) {
   final lines = [
     for (final e in library.take(80))
       '- ${e.id} | ${e.name} | ${e.trackingType.name}'
           '${e.muscleGroup == null ? '' : ' | ${e.muscleGroup}'}',
   ];
+  final workoutLines = [
+    for (final w in workouts.take(20))
+      '- ${w.name}${w.focus == null ? '' : ' (${w.focus})'}: '
+          '${w.items.map((i) => i.exercise.name).join(', ')}',
+  ];
   return '''
-You are the workout assistant inside SetFlow, a local-first workout app. You help the user plan workouts and design exercises. Be concise and practical.
+You are the workout assistant inside SetFlow, a local-first workout app. Be concise and practical.
+
+Your capabilities:
+- CREATE new exercises in the user's library (via the json block below).
+- CREATE workouts, combining library exercises and newly created ones.
+- READ the user's exercise library and existing workouts — both are listed below; use them to avoid duplicates, reference realistic exercises, and match the user's style (e.g. "like Day A but harder").
+You canNOT edit or delete existing workouts/exercises, log sessions, or read workout history — if asked, explain the user can do that themselves in the app.
 
 The user's exercise library (id | name | tracking type | muscle group):
 ${lines.join('\n')}
+
+The user's existing workouts (name: exercises):
+${workoutLines.isEmpty ? '(none yet)' : workoutLines.join('\n')}
 
 Valid tracking types: reps, repsEachSide, timed, timedEachSide, hold, maxReps, stretch.
 - reps/repsEachSide/maxReps items use minReps/maxReps (maxReps type = burnout, no targets).

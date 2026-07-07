@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'local_llm.dart';
+
 /// Where the AI assistant sends its requests: any **OpenAI-compatible**
 /// chat-completions endpoint. In practice that means a local model server —
 /// Ollama / LM Studio / llama.cpp on the user's PC (or even on the phone via
@@ -14,6 +16,8 @@ class LlmSettings {
   static const _kBaseUrl = 'llm_base_url';
   static const _kModel = 'llm_model';
   static const _kApiKey = 'llm_api_key';
+  static const _kBackend = 'llm_backend';
+  static const _kLocalModelName = 'llm_local_model';
 
   static SharedPreferences? _prefs;
 
@@ -31,7 +35,25 @@ class LlmSettings {
   static String get apiKey => _prefs?.getString(_kApiKey)?.trim() ?? '';
   static set apiKey(String v) => _prefs?.setString(_kApiKey, v.trim());
 
-  static bool get configured => baseUrl.isNotEmpty && model.isNotEmpty;
+  /// 'remote' (OpenAI-compatible server) or 'local' (on-device inference).
+  static String get backend => _prefs?.getString(_kBackend) ?? 'remote';
+  static set backend(String v) => _prefs?.setString(_kBackend, v);
+  static bool get isLocal => backend == 'local';
+
+  /// Catalog name of the selected on-device model (see local_llm.dart).
+  static String get localModelName =>
+      _prefs?.getString(_kLocalModelName) ?? '';
+  static set localModelName(String v) =>
+      _prefs?.setString(_kLocalModelName, v);
+
+  static bool get configured => isLocal
+      ? localModelName.isNotEmpty
+      : baseUrl.isNotEmpty && model.isNotEmpty;
+
+  /// Short human label of the active setup, for Settings subtitles.
+  static String get summary => isLocal
+      ? 'On-device · $localModelName'
+      : '$model @ $baseUrl';
 
   /// Server root with scheme and no trailing slash or /v1 suffix.
   /// Accepts "192.168.1.201:11434", "http://host:11434", or ".../v1".
@@ -76,12 +98,19 @@ class LlmException implements Exception {
 class LlmClient {
   LlmClient._();
 
-  /// Streams assistant tokens for [messages]. Emits content deltas as they
-  /// arrive; throws [LlmException] with a displayable message on failure.
-  static Stream<String> chatStream(List<ChatMessage> messages) async* {
+  /// Streams assistant tokens for [messages]. Routes to the on-device engine
+  /// or the remote server per [LlmSettings.backend]; throws [LlmException]
+  /// with a displayable message on failure.
+  static Stream<String> chatStream(List<ChatMessage> messages) {
     if (!LlmSettings.configured) {
       throw const LlmException('AI endpoint not configured.');
     }
+    return LlmSettings.isLocal
+        ? LocalLlm.chatStream(messages)
+        : _remoteChatStream(messages);
+  }
+
+  static Stream<String> _remoteChatStream(List<ChatMessage> messages) async* {
     final request = http.Request('POST', LlmSettings.chatEndpoint())
       ..headers['Content-Type'] = 'application/json'
       ..body = jsonEncode({

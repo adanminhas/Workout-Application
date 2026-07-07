@@ -73,10 +73,11 @@ class _AssistantScreenState extends State<AssistantScreen> {
     _scrollToEnd();
 
     try {
-      // Fresh library snapshot each turn so new exercises are known.
+      // Fresh library + workouts snapshot each turn so new items are known.
       final library = await widget.repository.watchExercises().first;
+      final workouts = await widget.repository.watchWorkouts().first;
       final messages = [
-        ChatMessage('system', buildSystemPrompt(library)),
+        ChatMessage('system', buildSystemPrompt(library, workouts)),
         for (final b in _chat)
           if (b.text.isNotEmpty) ChatMessage(b.role, b.text),
       ];
@@ -195,9 +196,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                     '"Make me a 25-minute core workout, no '
                                     'equipment" or "Add three shoulder '
                                     'exercises".'
-                                : 'Connect a model first (⚙ top right).\n'
-                                    'Easiest: Ollama on your PC — free and '
-                                    'fully local.',
+                                : 'Connect a model first: ⬇ to download one '
+                                    'onto this device, or ⚙ to point at an '
+                                    'Ollama server. Both free and private.',
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.outline),
