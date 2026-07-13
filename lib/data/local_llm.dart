@@ -74,7 +74,10 @@ class LocalLlm {
   /// plugin side. Emits live progress 0–100 and closes when done.
   static Stream<int> download(LocalModelInfo info) {
     final controller = StreamController<int>();
-    FlutterGemma.installModel(modelType: info.modelType)
+    // fileType must be explicit: installModel defaults to ModelFileType.task,
+    // and the LiteRT-LM engine refuses a spec marked .task at load time.
+    FlutterGemma.installModel(
+            modelType: info.modelType, fileType: ModelFileType.litertlm)
         .fromNetwork(info.url)
         .withProgress((p) {
           if (!controller.isClosed) controller.add(p);
@@ -123,7 +126,8 @@ class LocalLlm {
       if (_model == null || _loadedModelName != info.name) {
         await _model?.close();
         _model = null;
-        await FlutterGemma.installModel(modelType: info.modelType)
+        await FlutterGemma.installModel(
+                modelType: info.modelType, fileType: ModelFileType.litertlm)
             .fromNetwork(info.url)
             .install(); // marks it active; no re-download when present
         _model = await FlutterGemma.getActiveModel(maxTokens: 4096);
