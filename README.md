@@ -186,8 +186,8 @@ dart run build_runner build --delete-conflicting-outputs
 
 Application id / launch package: `com.setflow.setflow`.
 
-> **Full setup, cross-machine handoff, device pairing, emulator, and the local
-> Ollama service are documented in [CLAUDE.md](CLAUDE.md).**
+> **Full setup, build, emulator, and the detailed plan live in
+> [DEVELOPMENT.md](DEVELOPMENT.md).**
 
 ### Tests
 
@@ -225,4 +225,5 @@ generator, wger media, the AI assistant, and on-device AI (verified on a Pixel
 - iOS build (the `ios/` folder exists; building/signing an IPA needs macOS +
   Xcode — develop here, then `flutter build ipa` on a Mac)
 
-See [CLAUDE.md](CLAUDE.md) for the detailed stage-by-stage plan and progress log.
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the detailed stage-by-stage plan and
+progress log.
